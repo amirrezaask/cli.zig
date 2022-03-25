@@ -1,10 +1,10 @@
 const std = @import("std");
 const print = std.debug.print;
 
-pub const Args = [][]const u8;
-pub const Flags = std.StringHashMap([]const u8);
+const Args = [][]const u8;
+const Flags = std.StringHashMap([]const u8);
 
-pub const Parsed = struct {
+const Parsed = struct {
     allocator: std.mem.Allocator,
     args: Args,
     flags: Flags,
@@ -13,14 +13,24 @@ pub const Parsed = struct {
         self.flags.deinit();
         self.allocator.free(self.args);
     }
-    pub fn get_flag(self: *Parsed, name: []const u8) ?[]const u8 {
+    pub fn get_flag(self: Parsed, name: []const u8) ?[]const u8 {
         return self.flags.get(name);
     }
-    pub fn get_nth_arg(self: *Parsed, n: usize) []const u8 {
+    pub fn get_nth_arg(self: Parsed, n: usize) []const u8 {
         return self.args[n];
     }
-    pub fn get_args(self: *Parsed) [][]const u8 {
+    pub fn get_args(self: Parsed) [][]const u8 {
         return self.args;
+    }
+    pub fn get_flags(self: Parsed) ![][2][]const u8 {
+        var tuples = std.ArrayList([2][]const u8).init(self.allocator);
+        print("{}", .{self.flags.count()});
+        var iter = self.flags.keyIterator();
+        while (iter.next()) |key| {
+            try tuples.append([2][]const u8{ key.*, self.flags.get(key.*).? });
+        }
+
+        return tuples.items;
     }
 };
 const FlagType = enum {
@@ -66,7 +76,16 @@ fn parse_arguments(allocator: std.mem.Allocator, arguments: [][]const u8) !Parse
 pub fn parse(
     allocator: std.mem.Allocator,
 ) !Parsed {
-    return parse_arguments(allocator, std.os.argv);
+    var argv = std.ArrayList([]const u8).init(allocator);
+    var i: usize = 0;
+
+    while (i < std.os.argv.len) : (i += 1) {
+        try argv.append(std.mem.span(std.os.argv[i]));
+    }
+    return parse_arguments(
+        allocator,
+        argv.items,
+    );
 }
 
 test "cli.argument should be added to args array when parsed" {
