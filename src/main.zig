@@ -33,21 +33,21 @@ fn is_flag(arg: []const u8) ?FlagType {
     return null;
 }
 
-fn parse_arguments(allocator: std.mem.Allocator, aruguments: [][]const u8) !Parsed {
+fn parse_arguments(allocator: std.mem.Allocator, arguments: [][]const u8) !Parsed {
     var args = std.ArrayList([]const u8).init(allocator);
     var flags = Flags.init(allocator);
     var i: usize = 0;
-    while (i < aruguments.len) : (i += 1) {
-        const arg = aruguments[i];
+    while (i < arguments.len) : (i += 1) {
+        const arg = arguments[i];
         if (is_flag(arg)) |is_flag_val| {
             switch (is_flag_val) {
                 .single_dash => {
-                    try flags.put(arg[1..], aruguments[i + 1]);
+                    try flags.put(arg[1..], arguments[i + 1]);
                     i += 1;
                     continue;
                 },
                 .double_dash => {
-                    try flags.put(arg[2..], aruguments[i + 1]);
+                    try flags.put(arg[2..], arguments[i + 1]);
                     i += 1;
                     continue;
                 },
