@@ -8,9 +8,19 @@ pub const Parsed = struct {
     allocator: std.mem.Allocator,
     args: Args,
     flags: Flags,
+    // calls deinit on internal HashMap holding flags and array holding arguments.
     pub fn deinit(self: *Parsed) void {
         self.flags.deinit();
         self.allocator.free(self.args);
+    }
+    pub fn get_flag(self: *Parsed, name: []const u8) ?[]const u8 {
+        return self.flags.get(name);
+    }
+    pub fn get_nth_arg(self: *Parsed, n: usize) []const u8 {
+        return self.args[n];
+    }
+    pub fn get_args(self: *Parsed) [][]const u8 {
+        return self.args;
     }
 };
 const FlagType = enum {
@@ -23,7 +33,7 @@ fn is_flag(arg: []const u8) ?FlagType {
     return null;
 }
 
-fn parse(allocator: std.mem.Allocator, aruguments: [][]const u8) !Parsed {
+fn parse_arguments(allocator: std.mem.Allocator, aruguments: [][]const u8) !Parsed {
     var args = std.ArrayList([]const u8).init(allocator);
     var flags = Flags.init(allocator);
     var i: usize = 0;
@@ -53,14 +63,20 @@ fn parse(allocator: std.mem.Allocator, aruguments: [][]const u8) !Parsed {
     };
 }
 
+pub fn parse(
+    allocator: std.mem.Allocator,
+) !Parsed {
+    return parse(allocator, std.os.argv);
+}
+
 test "cli.argument should be added to args array when parsed" {
     const a = std.testing.allocator;
     var args = std.ArrayList([]const u8).init(a);
     defer args.deinit();
     try args.append("a");
-    var parsed = try parse(a, args.items);
+    var parsed = try parse_arguments(a, args.items);
     defer parsed.deinit();
-    try std.testing.expectEqualStrings("a", parsed.args[0]);
+    try std.testing.expectEqualStrings("a", parsed.get_nth_arg(0));
 }
 test "cli.single dash flag should be added to flags map" {
     const a = std.testing.allocator;
@@ -68,9 +84,9 @@ test "cli.single dash flag should be added to flags map" {
     defer args.deinit();
     try args.append("-b");
     try args.append("b");
-    var parsed = try parse(a, args.items);
+    var parsed = try parse_arguments(a, args.items);
     defer parsed.deinit();
-    try std.testing.expectEqualStrings("b", parsed.flags.get("b").?);
+    try std.testing.expectEqualStrings("b", parsed.get_flag("b").?);
 }
 
 test "cli.double dash flag should be added to flags map" {
@@ -79,9 +95,9 @@ test "cli.double dash flag should be added to flags map" {
     defer args.deinit();
     try args.append("--b");
     try args.append("b");
-    var parsed = try parse(a, args.items);
+    var parsed = try parse_arguments(a, args.items);
     defer parsed.deinit();
-    try std.testing.expectEqualStrings("b", parsed.flags.get("b").?);
+    try std.testing.expectEqualStrings("b", parsed.get_flag("b").?);
 }
 
 test "cli.mixed flags" {
@@ -92,10 +108,10 @@ test "cli.mixed flags" {
     try args.append("b");
     try args.append("-c");
     try args.append("b");
-    var parsed = try parse(a, args.items);
+    var parsed = try parse_arguments(a, args.items);
     defer parsed.deinit();
-    try std.testing.expectEqualStrings("b", parsed.flags.get("b").?);
-    try std.testing.expectEqualStrings("b", parsed.flags.get("c").?);
+    try std.testing.expectEqualStrings("b", parsed.get_flag("b").?);
+    try std.testing.expectEqualStrings("b", parsed.get_flag("c").?);
 }
 
 test "cli.mixed flags and args" {
@@ -107,9 +123,9 @@ test "cli.mixed flags and args" {
     try args.append("b");
     try args.append("-c");
     try args.append("b");
-    var parsed = try parse(a, args.items);
+    var parsed = try parse_arguments(a, args.items);
     defer parsed.deinit();
-    try std.testing.expectEqualStrings("b", parsed.flags.get("b").?);
-    try std.testing.expectEqualStrings("b", parsed.flags.get("c").?);
-    try std.testing.expectEqualStrings("a", parsed.args[0]);
+    try std.testing.expectEqualStrings("b", parsed.get_flag("b").?);
+    try std.testing.expectEqualStrings("b", parsed.get_flag("c").?);
+    try std.testing.expectEqualStrings("a", parsed.get_nth_arg(0));
 }
