@@ -66,7 +66,7 @@ fn parse_arguments(allocator: std.mem.Allocator, aruguments: [][]const u8) !Pars
 pub fn parse(
     allocator: std.mem.Allocator,
 ) !Parsed {
-    return parse(allocator, std.os.argv);
+    return parse_arguments(allocator, std.os.argv);
 }
 
 test "cli.argument should be added to args array when parsed" {
